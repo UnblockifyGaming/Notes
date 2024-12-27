@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes with Tabs</title>
+  <link rel="icon" href="favicon.png">
+  <style>
+    /* General Styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Tabs Container */
+    .tabs {
+      display: flex;
+      align-items: center;
+      background: #f0f0f0;
+      border-bottom: 1px solid #ccc;
+      padding: 5px;
+    }
+
+    .tab {
+      padding: 10px 15px;
+      margin-right: 5px;
+      background: #e0e0e0;
+      border: 1px solid #ccc;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #d0d0d0;
+      border-bottom: 1px solid #d0d0d0;
+    }
+
+    .tab input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: inherit;
+      background: transparent;
+    }
+
+    .add-tab-btn {
+      margin-left: auto;
+      padding: 5px 10px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .add-tab-btn:hover {
+      background: #45a049;
+    }
+
+    /* Textarea */
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      font-size: 1.2rem;
+      padding: 10px;
+      box-sizing: border-box;
+      resize: none;
+      font-family: monospace;
+    }
+
+    /* Dark Mode */
+    .dark-mode {
+      background: #121212;
+      color: white;
+    }
+
+    .dark-mode textarea {
+      background: #1e1e1e;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <div class="tab active">Tab 1</div>
+    <button class="add-tab-btn">+ Add Tab</button>
+  </div>
+  <textarea placeholder=""></textarea>
+  <video id="pop-video" src="pop.mp3" preload="auto"></video>
+  <script>
+    const tabsContainer = document.querySelector('.tabs');
+    const textarea = document.querySelector('textarea');
+    const video = document.getElementById('pop-video');
+    const addTabBtn = document.querySelector('.add-tab-btn');
+    let tabs = [{ title: 'Tab 1', content: '' }]; // Store tabs content
+    let activeTabIndex = 0;
+
+    // Character pairs for autocompletion
+    const autoCompletePairs = {
+      '[': ']',
+      '{': '}',
+      '"': '"',
+      "'": "'",
+      '(': ')',
+      '*': '*',
+      '%': '%'
+    };
+
+    // Update textarea with the content of the active tab
+    function updateTextarea() {
+      textarea.value = tabs[activeTabIndex].content;
+    }
+
+    // Update tabs' visual appearance
+    function updateTabsUI() {
+      const tabsUI = document.querySelectorAll('.tab');
+      tabsUI.forEach((tab, index) => {
+        tab.classList.toggle('active', index === activeTabIndex);
+      });
+    }
+
+    // Add new tab
+    function addNewTab() {
+      tabs.push({ title: `Tab ${tabs.length + 1}`, content: '' });
+      const newTab = document.createElement('div');
+      newTab.className = 'tab';
+      newTab.textContent = `Tab ${tabs.length}`;
+      tabsContainer.insertBefore(newTab, addTabBtn);
+
+      addTabListeners(newTab, tabs.length - 1);
+
+      activeTabIndex = tabs.length - 1;
+      updateTabsUI();
+      updateTextarea();
+    }
+
+    // Save the content of the active tab
+    function saveActiveTabContent() {
+      tabs[activeTabIndex].content = textarea.value;
+    }
+
+    // Add event listeners for tab interactions
+    function addTabListeners(tab, index) {
+      // Switch tab on click
+      tab.addEventListener('click', () => {
+        saveActiveTabContent();
+        activeTabIndex = index;
+        updateTabsUI();
+        updateTextarea();
+      });
+
+      // Rename tab on double click
+      tab.addEventListener('dblclick', () => {
+        const currentTitle = tabs[index].title;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentTitle;
+        tab.textContent = ''; // Clear tab content
+        tab.appendChild(input);
+        input.focus();
+
+        input.addEventListener('blur', () => {
+          const newTitle = input.value.trim() || currentTitle; // Default to old title if empty
+          tabs[index].title = newTitle;
+          tab.textContent = newTitle;
+        });
+
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            input.blur(); // Save title on Enter
+          }
+        });
+      });
+    }
+
+    // Initialize first tab's event listeners
+    addTabListeners(document.querySelector('.tab'), 0);
+
+    // Add event listener for adding new tabs
+    addTabBtn.addEventListener('click', addNewTab);
+
+    // Add keyboard shortcut (Ctrl+T) for adding a new tab
+    document.addEventListener('keydown', (event) => {
+      if (event.ctrlKey && event.key === 't') {
+        event.preventDefault();
+        addNewTab();
+      }
+    });
+
+    // Handle input in the textarea
+    textarea.addEventListener('input', (event) => {
+      // Play video on input
+      if (!video.paused) {
+        video.currentTime = 0; // Reset video if it's already playing
+      }
+      video.play();
+    });
+
+    // Autocomplete pairs and backspace handling
+    textarea.addEventListener('keydown', (event) => {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      // Handle autocomplete
+      if (autoCompletePairs[event.key]) {
+        event.preventDefault();
+        const closeChar = autoCompletePairs[event.key];
+
+        textarea.setRangeText(event.key + closeChar, start, end, 'end');
+        textarea.selectionStart = textarea.selectionEnd = start + 1;
+      }
+
+      // Handle backspace for deleting brackets
+      if (event.key === 'Backspace' && start === end && start > 0) {
+        const charBefore = textarea.value[start - 1];
+        const charAfter = textarea.value[start];
+        if (autoCompletePairs[charBefore] === charAfter) {
+          event.preventDefault();
+          textarea.setRangeText('', start - 1, start + 1, 'start');
+        }
+      }
+    });
+
+    // Handle dark mode toggle with F8
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'F8') {
+        document.body.classList.toggle('dark-mode');
+      }
+    });
+  </script>
+</body>
+</html>
